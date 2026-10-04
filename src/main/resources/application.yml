@@ -1,0 +1,58 @@
+spring:
+  application:
+    name: ia-workflow
+
+  # Les appels LLM bloquants tournent en @Async sur threads virtuels (Java 25).
+  threads:
+    virtual:
+      enabled: true
+
+  datasource:
+    url: jdbc:postgresql://localhost:15432/iaworkflow
+    username: iaworkflow
+    password: iaworkflow
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+
+  # Timeouts HTTP du RestClient auto-configuré (utilisé par le client OpenAI/Z.ai).
+  http:
+    client:
+      connect-timeout: 5s
+      read-timeout: 180s
+
+  # Nouvelle tentative automatique des appels IA : erreurs transitoires (429, 5xx)
+  # avec backoff exponentiel ; pas de retry sur les erreurs client (4xx hors liste).
+  ai:
+    retry:
+      max-attempts: 3
+      backoff:
+        initial-interval: 2s
+        multiplier: 3
+        max-interval: 30s
+      on-client-errors: false
+      exclude-on-http-codes: 400,403,404
+    # Modèle actif côté auto-configuration Spring AI.
+    # zai et openai utilisent le client OpenAI ; pour basculer de provider,
+    # changer cette valeur (openai | anthropic | ollama) ET app.ai.provider.
+    model:
+      chat: openai
+    openai:
+      # Z.ai expose une API compatible OpenAI
+      base-url: ${ZAI_BASE_URL:http://localhost:3000/v1}
+      api-key: ${ZAI_API_KEY:}
+      chat:
+        options:
+          model: ${ZAI_MODEL:glm-5.3-flash}
+          temperature: 0.3
+    anthropic:
+      api-key: ${ANTHROPIC_API_KEY:}
+    ollama:
+      base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
+
+app:
+  ai:
+    # Provider utilisé pour construire le ChatClient : zai | openai | anthropic | ollama
+    provider: zai
